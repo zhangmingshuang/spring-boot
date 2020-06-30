@@ -166,13 +166,18 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 
 	@Override
 	public boolean supportsEventType(Class<? extends ApplicationEvent> eventType) {
+		//监听事件
+		//ApplicationEnvironmentPreparedEvent 在上下文使用Environment之前的事件
+		//ApplicationPreparedEvent 在定义好Bean之后，上下文刷新之前的事件
 		return ApplicationEnvironmentPreparedEvent.class.isAssignableFrom(eventType)
 				|| ApplicationPreparedEvent.class.isAssignableFrom(eventType);
 	}
 
 	@Override
 	public void onApplicationEvent(ApplicationEvent event) {
+		//根据事件类型来调用配置加载
 		if (event instanceof ApplicationEnvironmentPreparedEvent) {
+			//onApplicationEnvironmentPreparedEvent事件。也就是上下文使用Environment之前的配置初始化。
 			onApplicationEnvironmentPreparedEvent((ApplicationEnvironmentPreparedEvent) event);
 		}
 		if (event instanceof ApplicationPreparedEvent) {
@@ -181,10 +186,13 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 	}
 
 	private void onApplicationEnvironmentPreparedEvent(ApplicationEnvironmentPreparedEvent event) {
+		//从spring.factories中加载EnvironmentPostProcessor实现类。
 		List<EnvironmentPostProcessor> postProcessors = loadPostProcessors();
+		//然后将自己（ConfigFileApplicationListener)也加入到处理器列表中。
 		postProcessors.add(this);
 		AnnotationAwareOrderComparator.sort(postProcessors);
 		for (EnvironmentPostProcessor postProcessor : postProcessors) {
+			//进行配置加载处理
 			postProcessor.postProcessEnvironment(event.getEnvironment(), event.getSpringApplication());
 		}
 	}
@@ -211,6 +219,7 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 	 */
 	protected void addPropertySources(ConfigurableEnvironment environment, ResourceLoader resourceLoader) {
 		RandomValuePropertySource.addToEnvironment(environment);
+		//执行配置文件的加载
 		new Loader(environment, resourceLoader).load();
 	}
 
@@ -315,6 +324,8 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 			this.environment = environment;
 			this.placeholdersResolver = new PropertySourcesPlaceholdersResolver(this.environment);
 			this.resourceLoader = (resourceLoader != null) ? resourceLoader : new DefaultResourceLoader();
+			//从spring.factories中加载PropertySourceLoader
+			//默认的有PropertiesPropertySourceLoader与YamlPropertySourceLoader
 			this.propertySourceLoaders = SpringFactoriesLoader.loadFactories(PropertySourceLoader.class,
 					getClass().getClassLoader());
 		}
@@ -469,6 +480,7 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 		}
 
 		private boolean canLoadFileExtension(PropertySourceLoader loader, String name) {
+			//判断PropertySourceLoader支持加载的文件扩展类型
 			return Arrays.stream(loader.getFileExtensions())
 					.anyMatch((fileExtension) -> StringUtils.endsWithIgnoreCase(name, fileExtension));
 		}
